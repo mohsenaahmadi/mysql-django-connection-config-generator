@@ -1,3 +1,6 @@
+from mysql_connector_checker import MySqlConnectionChecker
+import getpass
+
 class MySQLConf:
     def __init__(
             self, db_name: str,
@@ -19,7 +22,7 @@ class MySQLConf:
             self.host = 'localhost'
         if self.default_character_set is None:
             self.default_character_set = 'utf-8'
-        self.path = __file__.replace('create_mysql_conf.py', 'db.cnf')
+        self.path = __file__.replace('utils.py', 'db.cnf')
 
     @property
     def port_str(self):
@@ -52,7 +55,7 @@ class MySQLConf:
         TerminalInputOutput.print_info_in_terminal(
             f'Enter Path for save config file.\n(Leave it blank for create in {self.path})')
         path = TerminalInputOutput.get_input_and_return_value()
-        if path is not None or path != '':
+        if path is not None and path != '':
             self.path = path
         with open(self.path, 'w+') as file:
             file.write('[client]\n')
@@ -84,20 +87,28 @@ class TerminalInputOutput:
         print(TerminalInputOutput.OKCYAN + message + TerminalInputOutput.ENDC)
 
     @staticmethod
-    def get_input_and_return_value(default_value_if_blank=None):
-        value = input()
+    def get_input_and_return_value(default_value_if_blank=None,required = False, is_password=False):
+        value = ''
+        if is_password:
+            value = getpass.getpass()
+        else:
+            value = input()
         if value == '':
-            return default_value_if_blank
+            if not required:
+                return default_value_if_blank
+            else:
+                TerminalInputOutput.print_error_in_terminal("Empty Value not acceptable. Enter value.")
+                return TerminalInputOutput.get_input_and_return_value(default_value_if_blank, required, is_password)
         return value
 
 
 def get_input():
     TerminalInputOutput.print_info_in_terminal('Enter Database Schema name:')
-    db_name = TerminalInputOutput.get_input_and_return_value()
+    db_name = TerminalInputOutput.get_input_and_return_value(required=True)
     TerminalInputOutput.print_info_in_terminal('Enter Username:')
-    username = TerminalInputOutput.get_input_and_return_value()
+    username = TerminalInputOutput.get_input_and_return_value(required=True)
     TerminalInputOutput.print_info_in_terminal(f'Enter Password of {username}:')
-    password = TerminalInputOutput.get_input_and_return_value()
+    password = TerminalInputOutput.get_input_and_return_value(required=True, is_password=True)
     TerminalInputOutput.print_info_in_terminal(f'Enter host IP:\n(if is in this machine leave it blank.)')
     host = TerminalInputOutput.get_input_and_return_value()
     TerminalInputOutput.print_info_in_terminal(
@@ -107,3 +118,29 @@ def get_input():
     default_character_set = TerminalInputOutput.get_input_and_return_value(
     )
     return MySQLConf(**locals())
+
+
+def get_yes_or_no():
+    while True:
+        answer = input().lower()
+        if answer == 'y' or answer == 'n':
+            if answer == 'y':
+                return True
+            else:
+                return False
+        TerminalInputOutput.print_error_in_terminal('Wrong Input.')
+        continue
+
+
+def run_script():
+    mysql_obj = get_input()
+    check_result = MySqlConnectionChecker(**mysql_obj.related_kwargs()).test_connection()
+    if not check_result:
+        TerminalInputOutput.print_info_in_terminal('Failed to connect db, Do you want to bypass?(y/n)')
+        check_result = get_yes_or_no()
+    if check_result:
+        mysql_obj.write_config_for_mysql_checker()
+        TerminalInputOutput.print_success_in_terminal('All Done! Good Bye.')
+    else:
+        TerminalInputOutput.print_error_in_terminal('Failed to create. See you next time! :)')
+

@@ -16,6 +16,7 @@ class MySqlConnectionChecker:
     def __init__(self, *args, **kwargs):
         self.db_config = {
             "host": kwargs['host'],  # Replace with your MySQL host
+            "port": kwargs['port'],
             "user": kwargs['username'],  # Replace with your MySQL username
             "password": kwargs['password'],  # Replace with your MySQL password
             "database": kwargs['database']  # Replace with your MySQL database name
